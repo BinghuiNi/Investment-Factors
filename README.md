@@ -1,2 +1,2 @@
 # Investment-Factors
-Develop investment factors by applying machine learning methods and predictive analysis into the Equity and Corporate Bond markets. Build portfolios based on computed factors and evaluate their performance with visualization tools.
+By applying machine learning methods and predictive analysis into the Equity and Corporate Bond markets, I developed quantitative investment factors under the finance framework, including fundamental analysis for investees' financial situations and technical analysis for the trend of their stock prices. Based on computed factors, I also build grouped portfolios and evaluate their performance with visualization tools.
