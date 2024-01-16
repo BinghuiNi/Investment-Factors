@@ -92,7 +92,6 @@ for i in range(len(df_merge1)):
         (df_preclose.loc[after, df_merge1['ts_code.1'][i]] - df_preclose.loc[before, df_merge1['ts_code.1'][i]]) /
         df_preclose.loc[before, df_merge1['ts_code.1'][i]] - csi_ret)
 df_merge2 = df_merge1.copy()
-
 df_merge3=df_merge2.dropna().sort_values(by=['ann_date','ts_code.1'])
 df_merge3 = df_merge3[(df_merge3['ann_date'] >= '2011-01-01') & (df_merge3['ann_date'] <= '2021-12-31')]
 
@@ -115,6 +114,7 @@ df_merge3['report_summary']=summary_text
 
 df_merge4 = df_merge3.copy()
 df_merge4['ann_date'] = [datetime.datetime.strptime(i, '%Y-%m-%d').date() for i in df_merge4['ann_date']]
+
 # SPLIT DATA INTO SAMPLE_IN AND SAMPLE_OUT (TRAIN / TEST)
 def split_dataset(df, current_date):
     sample_in_start = datetime.date(current_date.year - 2, current_date.month, current_date.day)
@@ -168,7 +168,9 @@ def generate_features_labels(rolling_datasets):
 X_all, Y_all, X_outs, data_outs = generate_features_labels(rolling_datasets)
 
 # LOGISTIC REGRESSION
-from sklearn.linear_model import LogisticRegression
+# from sklearn.linear_model import LogisticRegression
+# XGBoost
+from xgboost import XGBClassifier
 from sklearn.model_selection import GridSearchCV, cross_val_score
 from sklearn.metrics import roc_auc_score
 stock_list = list(df_preclose.columns)
@@ -176,22 +178,28 @@ trade_day = df_preclose.index[
     (df_preclose.index >= datetime.date(2013, 1, 1)) & (df_preclose.index <= datetime.date(2021, 12, 31))]
 def train_model(X_all, Y_all, X_outs, data_outs):
     factor_list = []
-    j = 1
     for X, Y, X_out, data_out in tqdm(zip(X_all, Y_all, X_outs, data_outs)):
         param_grid = {
-            'C': [0.00001, 0.00003, 0.00006, 0.00008, 0.0001, 0.0003, 0.0006, 0.0008, 0.001, 0.003, 0.006, 0.008, 0.01]}
+            'learning_rate': [0.025, 0.05, 0.1],
+            'n_estimators': [50, 100, 200],
+            'max_depth': [3, 5]        
+        }
         prob_list = []
         for i in range(-1, 2):
-            lr_model = LogisticRegression(penalty='elasticnet', solver='saga', l1_ratio=0.5, random_state=20)
+            # lr_model = LogisticRegression(penalty='elasticnet', solver='saga', l1_ratio=0.5, random_state=20)
+            xgb_model = XGBClassifier(objective='binary:logistic', random_state=20
             # GRID SEARCH FOR LAMBDA
-            grid_search = GridSearchCV(estimator=lr_model, param_grid=param_grid, cv=5, scoring='roc_auc')
+            grid_search = GridSearchCV(estimator=xgb_model, param_grid=param_grid, cv=5, scoring='roc_auc')
             # OvR
-            Y_class = Y.copy()
-            Y_class = (Y_class == i).astype(int)
+            Y_class = (Y == i).astype(int)
             grid_search.fit(X, Y_class)
             best_params = grid_search.best_params_
-            final_model = LogisticRegression(penalty='elasticnet', solver='saga', l1_ratio=0.5, C=best_params['C'],
-                                             random_state=20)
+            final_model = XGBClassifier (learning_rate=best_params['learning_rate'],
+                                         n_estimators=best_params['n_estimators'],
+                                         max_depth=best_params['max_depth'],
+                                         gamma=0.8, 
+                                         subsample=0.7,
+                                         seed=1024)
             final_model.fit(X, Y_class)
             # SAMPLE_OUT PREDICTION
             prob = pd.DataFrame(final_model.predict_proba(X_out))[1]
@@ -220,7 +228,6 @@ length = factor_fill.shape[0]
 def filled(times):
     factor_filled = factor_fill.copy()
     decay_factor = 0.95
-
     for i, j in tqdm(zip(*array2)):
         col_data = factor_filled.iloc[:, j]
         for date in range(i + 1, i + times):
