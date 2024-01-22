@@ -61,7 +61,7 @@ df_report = pd.concat(ls_report, ignore_index=True)
 df_report['est_dt'] = [datetime.datetime.strptime(i, '%Y%m%d').date() for i in df_report['est_dt']]
 df_report = df_report.sort_values(by=['s_info_windcode', 'est_dt'])
 
-# 2. DATA MATCHING (Announcements and Reports within 5 days)
+# 2. DATA INTEGRATION (Announcements and Reports within 5 days)
 for i in range(len(df_annc)):
     stock = df_annc.iloc[i, 0]
     date = df_annc.iloc[i, 1]
@@ -72,7 +72,7 @@ df_merge = pd.merge(df_annc, df_report, how='inner', left_on=['ts_code.1', 'ann_
                     right_on=['s_info_windcode', 'original'])
 df_merge = df_merge.drop(['s_info_windcode', 'original'], axis=1).sort_values(by=['ann_date', 'ts_code.1'])
 df_merge = df_merge.reset_index(drop=True, inplace=True)
-# 2. DATA MATCHING ( With Excess Returns)
+# 2. DATA INTEGRATION ( With Excess Returns)
 for i in range(df_merge.shape[0]):
     before = get_near_trade_day(df_merge[:,'ann_date'][i], forward=True)
     after = get_near_trade_day(df_merge[:,'ann_date'][i], forward=False)
