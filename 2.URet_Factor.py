@@ -31,7 +31,7 @@ for i in tqdm(index):
     mbars['volume']=mbars['volume'].replace(0,np.nan)
     std = mbars['volume'].std(skipna=True)
     mean = mbars['volume'].mean(skipna=True)
-    z.loc[i,:] = std/mean
+    z.loc[i,:] = std / mean
 
 def max_drawdown(series, name = 'net value'):
     if name == 'net value':
